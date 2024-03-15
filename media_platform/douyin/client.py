@@ -187,12 +187,34 @@ class DOUYINClient:
             comments = comments_res.get("comments", [])
             if not comments:
                 continue
+
+            # todo fetch sub comments
+            # if is_fetch_sub_comments:
+            for comment in comments:
+                if comment.get("reply_comment_total", 0) > 1:
+                    comment["sub_commont"] = await self.get_sub_comments(aweme_id, comment.get("cid"))
             result.extend(comments)
             if callback:  # 如果有回调函数，就执行回调函数
                 await callback(aweme_id, comments)
-
             await asyncio.sleep(crawl_interval)
-            if not is_fetch_sub_comments:
-                continue
-            # todo fetch sub comments
         return result
+
+    async def get_sub_comments(
+            self,
+            aweme_id: str,
+            comment_id: str,
+    ):
+        uri = "/aweme/v1/web/comment/list/reply/"
+        params = {
+            "item_id": aweme_id,
+            "comment_id": comment_id,
+            "item_type": 0,
+            "cursor": 0,
+            "count": 20,
+        }
+        keywords = request_keyword_var.get()
+        referer_url = "https://www.douyin.com/search/" + keywords + '?aid=3a3cec5a-9e27-4040-b6aa-ef548c2c1138&publish_time=0&sort_type=0&source=search_history&type=general'
+        headers = copy.copy(self.headers)
+        headers["Referer"] = urllib.parse.quote(referer_url, safe=':/')
+
+        return await self.get(uri, params)
